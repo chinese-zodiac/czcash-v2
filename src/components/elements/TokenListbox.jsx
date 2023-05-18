@@ -1,9 +1,9 @@
 import { Button, ClickAwayListener } from '@mui/material';
 import Autocomplete, { autocompleteClasses } from '@mui/material/Autocomplete';
 import Popper from '@mui/material/Popper';
-import { styled, useTheme } from '@mui/material/styles';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { styled, useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Box } from '@mui/system';
 import { BigNumber } from 'ethers';
@@ -12,6 +12,7 @@ import { matchSorter } from 'match-sorter';
 import {
   createContext,
   forwardRef,
+  memo,
   useContext,
   useEffect,
   useRef,
@@ -154,215 +155,207 @@ const StyledPopper = styled(Popper)({
   },
 });
 
-export default function TokenListBox({
-  labelSelectPrompt,
-  selectedToken,
-  setSelectedToken,
-  selectedTokenBalanceString,
-  selectedTokenPriceString,
-}) {
-  const { tokenList } = useContext(TokenListContext);
-  const { trackedTokens, syncTokenWeb3Data } = useContext(TrackedTokensContext);
-  const [anchorEl, setAnchorEl] = useState(null);
+const TokenListBox = memo(
+  ({ labelSelectPrompt, selectedToken, setSelectedToken }) => {
+    const { tokenList } = useContext(TokenListContext);
+    const { trackedTokens } = useContext(TrackedTokensContext);
+    const [anchorEl, setAnchorEl] = useState(null);
 
-  const tokens = tokenList.map((token) => {
-    if (!!trackedTokens.get(token.address)) {
-      const trackedToken = trackedTokens.get(token.address);
-      return {
-        ...token,
-        ...trackedToken,
-        isTracked: true,
-        usdVal:
-          !!trackedToken?.price?.gt(0) && !!trackedToken?.balance?.gt(0)
-            ? (() => {
-                const val = trackedToken.balance
-                  .mul(BigNumber.from(10).pow(trackedToken.decimals))
-                  .div(trackedToken.price);
-                //max val to exclude tokens with low liq
-                if (val.lt(parseEther('1000000000'))) {
-                  return val;
-                } else {
-                  console.log(
-                    'Token usdval over limit:',
-                    token.name,
-                    token.symbol,
-                    token.address
-                  );
-                  return BigNumber.from(0);
-                }
-              })()
-            : BigNumber.from(0),
-      };
-    } else {
-      return {
-        ...token,
-        isTracked: false,
-        balance: BigNumber.from(0),
-        price: BigNumber.from(0),
-        usdVal: BigNumber.from(0),
-      };
-    }
-  });
+    const tokens = tokenList.map((token) => {
+      if (!!trackedTokens.get(token.address)) {
+        const trackedToken = trackedTokens.get(token.address);
+        return {
+          ...token,
+          ...trackedToken,
+          isTracked: true,
+          usdVal:
+            !!trackedToken?.price?.gt(0) && !!trackedToken?.balance?.gt(0)
+              ? (() => {
+                  const val = trackedToken.balance
+                    .mul(BigNumber.from(10).pow(trackedToken.decimals))
+                    .div(trackedToken.price);
+                  //max val to exclude tokens with low liq
+                  if (val.lt(parseEther('1000000000'))) {
+                    return val;
+                  } else {
+                    return BigNumber.from(0);
+                  }
+                })()
+              : BigNumber.from(0),
+        };
+      } else {
+        return {
+          ...token,
+          isTracked: false,
+          balance: BigNumber.from(0),
+          price: BigNumber.from(0),
+          usdVal: BigNumber.from(0),
+        };
+      }
+    });
 
-  const theme = useTheme();
+    const theme = useTheme();
 
-  const toggleOpen = (event) => {
-    setAnchorEl(!!anchorEl ? null : event.currentTarget);
-  };
+    const toggleOpen = (event) => {
+      setAnchorEl(!!anchorEl ? null : event.currentTarget);
+    };
 
-  const id = !!anchorEl ? 'token-popper' : undefined;
+    const id = !!anchorEl ? 'token-popper' : undefined;
 
-  return (
-    <>
-      <ClickAwayListener
-        onClickAway={() => {
-          setAnchorEl(null);
-        }}
-      >
-        <>
-          {!selectedToken ? (
-            <Button
-              variant="outlined"
-              onClick={(event) => {
-                toggleOpen(event);
-              }}
-              aria-describedby={id}
-              sx={{
-                width: '10em',
-                justifyContent: 'space-between',
-                display: 'flex',
-                height: '3.5em',
-              }}
+    return (
+      <>
+        <ClickAwayListener
+          onClickAway={() => {
+            setAnchorEl(null);
+          }}
+        >
+          <>
+            {!selectedToken ? (
+              <Button
+                variant="outlined"
+                onClick={(event) => {
+                  toggleOpen(event);
+                }}
+                aria-describedby={id}
+                sx={{
+                  width: '10em',
+                  justifyContent: 'space-between',
+                  display: 'flex',
+                  height: '3.5em',
+                }}
+              >
+                {labelSelectPrompt}
+              </Button>
+            ) : (
+              <>
+                <Box sx={{ display: 'inline-block' }}>
+                  <Button
+                    variant="outlined"
+                    onClick={(event) => {
+                      toggleOpen(event);
+                    }}
+                    aria-describedby={id}
+                    sx={{
+                      width: '10em',
+                      justifyContent: 'space-between',
+                      display: 'flex',
+                      height: '3.5em',
+                    }}
+                  >
+                    <Box>
+                      <Box
+                        as="img"
+                        src={selectedToken.logoURI}
+                        sx={{
+                          width: '2em',
+                          height: 'auto',
+                          maxHeight: '2em',
+                          marginRight: '0.5em',
+                          display: 'inline-block',
+                        }}
+                      />
+                      <Box sx={{ textAlign: 'left', display: 'inline-block' }}>
+                        <Typography
+                          as="span"
+                          sx={{
+                            display: 'block',
+                            fontSize: '1em',
+                            fontWeight: 'bold',
+                          }}
+                        >
+                          {selectedToken.symbol.length < 6
+                            ? selectedToken.symbol
+                            : selectedToken.symbol.substr(0, 4) + '…'}
+                        </Typography>
+                        <Typography
+                          as="span"
+                          sx={{ display: 'block', fontSize: '0.6em' }}
+                        >
+                          {selectedToken.name.length < 12
+                            ? selectedToken.name
+                            : selectedToken.name.substr(0, 10) + '…'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Button>
+                </Box>
+              </>
+            )}
+            <Popper
+              id={id}
+              open={!!anchorEl}
+              anchorEl={anchorEl}
+              placement="bottom-start"
             >
-              {labelSelectPrompt}
-            </Button>
-          ) : (
-            <>
-              <Box sx={{ display: 'inline-block' }}>
-                <Button
-                  variant="outlined"
-                  onClick={(event) => {
-                    toggleOpen(event);
+              <Box sx={{ backgroundColor: theme.palette.background.paper }}>
+                <Autocomplete
+                  id="token-selector"
+                  sx={{ width: 300, overflowX: 'hidden' }}
+                  disableListWrap
+                  PopperComponent={StyledPopper}
+                  ListboxComponent={ListboxComponent}
+                  options={tokens}
+                  open
+                  value={selectedToken}
+                  selectOnFocus
+                  disableCloseOnSelect
+                  onChange={(event, newValue) => {
+                    setSelectedToken(newValue);
+                    if (!!newValue) {
+                      //only close when not clearing input
+                      toggleOpen(event);
+                    }
                   }}
-                  aria-describedby={id}
-                  sx={{
-                    width: '10em',
-                    justifyContent: 'space-between',
-                    display: 'flex',
-                    height: '3.5em',
-                  }}
-                >
-                  <Box>
-                    <Box
-                      as="img"
-                      src={selectedToken.logoURI}
+                  filterOptions={(options, { inputValue }) =>
+                    matchSorter(options, inputValue, {
+                      keys: [
+                        {
+                          threshold: matchSorter.rankings.STARTS_WITH,
+                          key: 'symbol',
+                        },
+                        'name',
+                        'address',
+                      ],
+                      baseSort: (a, b) => {
+                        if (a.item.usdVal.eq(b.item.usdVal)) {
+                          if (
+                            a.item.source != b.item.source &&
+                            a.item.source == 'czcash'
+                          ) {
+                            return -1;
+                          } else {
+                            return a.index < b.index ? -1 : 1;
+                          }
+                        }
+                        return a.item.usdVal.gt(b.item.usdVal) ? -1 : 1;
+                      },
+                    })
+                  }
+                  getOptionLabel={(option) => `${option.symbol}`}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      variant="filled"
+                      label="Search symbol, name, or address"
                       sx={{
-                        width: '2em',
-                        height: 'auto',
-                        maxHeight: '2em',
-                        marginRight: '0.5em',
-                        display: 'inline-block',
+                        backgroundColor: theme.palette.background.paper,
+                        zIndex: 1500,
                       }}
                     />
-                    <Box sx={{ textAlign: 'left', display: 'inline-block' }}>
-                      <Typography
-                        as="span"
-                        sx={{
-                          display: 'block',
-                          fontSize: '1em',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        {selectedToken.symbol.length < 6
-                          ? selectedToken.symbol
-                          : selectedToken.symbol.substr(0, 4) + '…'}
-                      </Typography>
-                      <Typography
-                        as="span"
-                        sx={{ display: 'block', fontSize: '0.6em' }}
-                      >
-                        {selectedToken.name.length < 12
-                          ? selectedToken.name
-                          : selectedToken.name.substr(0, 10) + '…'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Button>
+                  )}
+                  renderOption={(props, option, state) => [
+                    props,
+                    option,
+                    state.index,
+                  ]}
+                />
               </Box>
-            </>
-          )}
-          <Popper
-            id={id}
-            open={!!anchorEl}
-            anchorEl={anchorEl}
-            placement="bottom-start"
-          >
-            <Box sx={{ backgroundColor: theme.palette.background.paper }}>
-              <Autocomplete
-                id="token-selector"
-                sx={{ width: 300, overflowX: 'hidden' }}
-                disableListWrap
-                PopperComponent={StyledPopper}
-                ListboxComponent={ListboxComponent}
-                options={tokens}
-                open
-                value={selectedToken}
-                selectOnFocus
-                disableCloseOnSelect
-                onChange={(event, newValue) => {
-                  setSelectedToken(newValue);
-                  if (!!newValue) {
-                    //only close when not clearing input
-                    toggleOpen(event);
-                  }
-                }}
-                filterOptions={(options, { inputValue }) =>
-                  matchSorter(options, inputValue, {
-                    keys: [
-                      {
-                        threshold: matchSorter.rankings.STARTS_WITH,
-                        key: 'symbol',
-                      },
-                      'name',
-                      'address',
-                    ],
-                    baseSort: (a, b) => {
-                      if (a.item.usdVal.eq(b.item.usdVal)) {
-                        if (
-                          a.item.source != b.item.source &&
-                          a.item.source == 'czcash'
-                        ) {
-                          return -1;
-                        } else {
-                          return a.index < b.index ? -1 : 1;
-                        }
-                      }
-                      return a.item.usdVal.gt(b.item.usdVal) ? -1 : 1;
-                    },
-                  })
-                }
-                getOptionLabel={(option) => `${option.symbol}`}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    variant="filled"
-                    label="Search symbol, name, or address"
-                    sx={{
-                      backgroundColor: theme.palette.background.paper,
-                      zIndex: 1500,
-                    }}
-                  />
-                )}
-                renderOption={(props, option, state) => [
-                  props,
-                  option,
-                  state.index,
-                ]}
-              />
-            </Box>
-          </Popper>
-        </>
-      </ClickAwayListener>
-    </>
-  );
-}
+            </Popper>
+          </>
+        </ClickAwayListener>
+      </>
+    );
+  }
+);
+
+export default TokenListBox;

@@ -9,6 +9,7 @@ import App from './App';
 import './fonts.css';
 import './index.css';
 import Home from './pages/Home';
+import OpenOcean from './pages/OpenOcean';
 
 import { MENU_HOME } from './constants/routes';
 
@@ -16,6 +17,10 @@ const router = createHashRouter([
   {
     path: '/',
     element: <Home />,
+  },
+  {
+    path: '/openocean',
+    element: <OpenOcean />,
   },
   ...MENU_HOME.flatMap((item) => {
     return item.pages.map((page) => ({

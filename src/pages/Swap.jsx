@@ -133,12 +133,6 @@ export default function Swap() {
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <TokenListBox
                 selectedToken={inputToken}
-                selectedTokenBalanceString={formatEther(
-                  inputToken?.balance ?? BigNumber.from(0)
-                )}
-                selectedTokenPriceString={formatEther(
-                  inputToken?.price ?? BigNumber.from(0)
-                )}
                 setSelectedToken={setInputToken}
                 labelSelectPrompt={
                   <Typography
